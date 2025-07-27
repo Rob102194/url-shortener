@@ -1,5 +1,6 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, EmailStr
 from app.core.db import get_db
@@ -9,7 +10,7 @@ from app.api.auth_schemas import LoginRequest, TokenResponse, RefreshRequest
 from app.core.config import settings
 from app.core.security import create_access_token, create_refresh_token
 from jose import jwt, JWTError
-from app.core.cache import get_cache_manager, CacheManager
+from app.core.redis import get_cache_manager, CacheManager
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -35,7 +36,11 @@ async def register(
     return TokenResponse(**tokens)
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+)
 async def login(
     body: LoginRequest,
     service: AuthService = Depends(get_auth_service),
@@ -50,7 +55,7 @@ async def refresh(
     user_repo: UserRepository = Depends(get_user_repo),
     cache: CacheManager = Depends(get_cache_manager),
 ):
-    if await cache.is_blacklisted(body.refresh_token):
+    if await cache.is_blacklisted(body.refresh_token) is not None:
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
 
     try:
@@ -87,3 +92,54 @@ async def logout(
 ):
     await service.logout(body.refresh_token)
     return {"message": "Logout successful"}
+
+
+async def get_current_user(
+    request: Request,
+    user_repo: UserRepository = Depends(get_user_repo),
+    cache: CacheManager = Depends(get_cache_manager),
+):
+    token = request.headers.get("Authorization")
+    if not token or not token.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = token.split(" ")[1]
+
+    if await cache.is_blacklisted(token) is not None:
+        raise HTTPException(status_code=401, detail="Token has been blacklisted")
+
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise ValueError
+    except (JWTError, ValueError):
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+
+    user = await user_repo.get_by_id(UUID(user_id))
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    request.state.user = user
+    return user
+
+
+async def user_identifier(request: Request):
+    return str(request.state.user.id)
+
+
+@router.get(
+    "/me",
+    dependencies=[
+        Depends(get_current_user),
+        Depends(
+            RateLimiter(
+                times=50,
+                seconds=60,
+                identifier=user_identifier,
+            )
+        ),
+    ],
+)
+async def me(request: Request):
+    return request.state.user

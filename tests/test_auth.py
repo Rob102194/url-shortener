@@ -67,7 +67,7 @@ async def test_login_user_not_found(client):
     assert res.status_code == 401
 
 # Prueba de refresco de token
-async def test_refresh_ok(client, mock_cache):
+async def test_refresh_ok(client):
     # Se registra un usuario
     await client.post(
         "/auth/register",
@@ -90,7 +90,7 @@ async def test_refresh_ok(client, mock_cache):
     assert "refresh_token" in data
 
 # Prueba de cierre de sesión
-async def test_logout_ok(client, mock_cache):
+async def test_logout_ok(client):
     # Se registra un usuario
     await client.post(
         "/auth/register",
@@ -109,11 +109,71 @@ async def test_logout_ok(client, mock_cache):
     )
     assert logout_res.status_code == 200
 
-    # Verificar que el token se ha añadido a la lista negra
-    assert await mock_cache.is_blacklisted(refresh_token)
-
     # Intentar refrescar el token después de cerrar sesión. Esto debería fallar porque el token está en la lista negra
     refresh_res = await client.post(
         "/auth/refresh", json={"refresh_token": refresh_token}
     )
     assert refresh_res.status_code == 401
+
+# Prueba de obtener información del usuario autenticado
+async def test_me_ok(client):
+    await client.post(
+        "/auth/register",
+        json={"email": "test@mail.com", "password": "secret"},
+    )
+    login_res = await client.post(
+        "/auth/login",
+        json={"email": "test@mail.com", "password": "secret"},
+    )
+    access_token = login_res.json()["access_token"]
+
+    # Obtener información del usuario autenticado
+    me_res = await client.get(
+        "/auth/me", headers={"Authorization": f"Bearer {access_token}"}
+    )
+    assert me_res.status_code == 200
+    assert me_res.json()["email"] == "test@mail.com"
+
+# Prueba de obtener información del usuario sin autenticación
+async def test_login_rate_limit(client):
+    await client.post(
+        "/auth/register",
+        json={"email": "test@mail.com", "password": "secret"},
+    )
+
+    # Hacer 5 solicitudes de inicio de sesión 
+    for _ in range(5):
+        res = await client.post(
+            "/auth/login",
+            json={"email": "test@mail.com", "password": "secret"},
+        )
+        assert res.status_code == 200
+
+    # La 6ta solicitud debería ser rate-limited
+    res = await client.post(
+        "/auth/login",
+        json={"email": "test@mail.com", "password": "secret"},
+    )
+    assert res.status_code == 429
+
+# Prueba de límite de tasa en el endpoint /me
+async def test_me_rate_limit(client):
+    await client.post(
+        "/auth/register",
+        json={"email": "test@mail.com", "password": "secret"},
+    )
+    login_res = await client.post(
+        "/auth/login",
+        json={"email": "test@mail.com", "password": "secret"},
+    )
+    access_token = login_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    # Hacer 50 solicitudes al endpoint /me
+    for i in range(50):
+        res = await client.get("/auth/me", headers=headers)
+        assert res.status_code == 200, f"Request {i+1} failed"
+
+    # La 51ª solicitud debería ser rate-limited
+    res = await client.get("/auth/me", headers=headers)
+    assert res.status_code == 429

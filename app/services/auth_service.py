@@ -6,7 +6,7 @@ from app.core.security import (
     create_refresh_token,
     hash_password,
 )
-from app.core.cache import CacheManager
+from app.core.redis import CacheManager
 from app.core.config import settings
 
 class AuthService:
