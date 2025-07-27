@@ -25,8 +25,9 @@ jobs:
       - run: poetry config virtualenvs.in-project true
       - run: poetry install --no-root
       - name: Run tests
-        run: poetry run pytest
+        run: pytest
         env:
+          PATH: ${{ github.workspace }}/.venv/bin:$PATH
           DB_HOST: localhost
           DB_PORT: 5432
           DB_USER: user
