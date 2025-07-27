@@ -12,6 +12,9 @@ class UserRepository:
         res = await self.db.execute(stmt)
         return res.scalar_one_or_none()
 
+    async def get_by_id(self, user_id: uuid.UUID) -> User | None:
+        return await self.db.get(User, user_id)
+
     async def create(self, email: str, hashed_pwd: str) -> User:
         user = User(id=uuid.uuid4(), email=email, hashed_password=hashed_pwd)
         self.db.add(user)

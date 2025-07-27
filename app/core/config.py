@@ -6,6 +6,10 @@ class Settings(BaseSettings):
     DATABASE_URL: PostgresDsn
     DEBUG: bool = True
 
+    # Redis
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+
     # JWT
     SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
