@@ -23,7 +23,7 @@ jobs:
           python-version: '3.12'
       - run: pip install poetry
       - run: poetry config virtualenvs.in-project true
-      - run: poetry install
+      - run: poetry install --no-root
       - name: Run tests
         run: pytest
         env:
