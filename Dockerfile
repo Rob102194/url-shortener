@@ -22,14 +22,28 @@ COPY . .
 # Stage 2: Create the final image
 FROM python:3.12-slim
 
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# Create a non-root user
+RUN addgroup --system app && adduser --system --group app
+
 # Set the working directory
 WORKDIR /app
 
 # Copy the virtual environment from the builder stage
 COPY --from=builder /app/.venv ./.venv
 
-# Copy the application code
-COPY . .
+# Copy the application code from the builder stage
+COPY --from=builder /app/app /app/app
+COPY --from=builder /app/alembic /app/alembic
+COPY --from=builder /app/alembic.ini /app/alembic.ini
+
+# Set ownership of the app directory
+RUN chown -R app:app /app
+
+# Switch to the non-root user
+USER app
 
 # Activate the virtual environment and run the application
 CMD ["/app/.venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
