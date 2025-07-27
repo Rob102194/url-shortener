@@ -21,13 +21,12 @@ services:
           type: redis
           name: url-shortener-redis
           property: port
+  - type: redis
+    name: url-shortener-redis
+    plan: starter
 
 databases:
   - name: url-shortener-db
     databaseName: urlshort
     user: urlshort
-    plan: starter
-
-redis:
-  - name: url-shortener-redis
     plan: starter
