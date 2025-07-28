@@ -1,9 +1,16 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import PostgresDsn
+from pydantic import PostgresDsn, field_validator
 
 class Settings(BaseSettings):
     # DB
     DATABASE_URL: PostgresDsn
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def db_url_add_asyncpg(cls, v: str) -> str:
+        if v and v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
     DEBUG: bool = True
 
     # Redis

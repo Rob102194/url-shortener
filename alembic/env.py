@@ -29,6 +29,10 @@ database_url = os.getenv("DATABASE_URL")
 if not database_url:
     raise ValueError("DATABASE_URL environment variable must be set for migrations")
 
+# Ensure the URL uses the asyncpg driver for SQLAlchemy
+if database_url.startswith("postgresql://"):
+    database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 config.set_main_option("sqlalchemy.url", database_url)
 
 
