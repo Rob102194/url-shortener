@@ -50,4 +50,4 @@ RUN chmod +x /app/start.sh
 USER app
 
 # Run the startup script
-CMD ["/app/start.sh"]
+ENTRYPOINT ["/app/start.sh"]
