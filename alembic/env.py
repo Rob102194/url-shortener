@@ -1,7 +1,9 @@
 from logging.config import fileConfig
+import os
+import asyncio
 
-from sqlalchemy import engine_from_config
 from sqlalchemy import pool
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 
@@ -16,18 +18,18 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
+# For autogenerate to work, models must be imported here
 from app.domain.base import Base
-from app.core.config import settings
 import app.domain.user
 target_metadata = Base.metadata
 
-# Use the database URL from the application settings
-config.set_main_option("sqlalchemy.url", str(settings.DATABASE_URL))
+# Get the database URL from the environment variable for migrations
+# This avoids loading the full application settings and causing validation errors
+database_url = os.getenv("DATABASE_URL")
+if not database_url:
+    raise ValueError("DATABASE_URL environment variable must be set for migrations")
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+config.set_main_option("sqlalchemy.url", database_url)
 
 
 def run_migrations_offline() -> None:
@@ -54,14 +56,12 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine
-
 def do_run_migrations(connection):
     context.configure(connection=connection, target_metadata=target_metadata)
 
     with context.begin_transaction():
         context.run_migrations()
+
 
 async def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
