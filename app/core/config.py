@@ -14,8 +14,7 @@ class Settings(BaseSettings):
     DEBUG: bool = True
 
     # Redis
-    REDIS_HOST: str = "localhost"
-    REDIS_PORT: int = 6379
+    REDIS_URL: str = "redis://localhost:6379"
 
     # JWT
     SECRET_KEY: str

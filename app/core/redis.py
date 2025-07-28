@@ -9,7 +9,7 @@ redis_client = None
 async def init_redis_pool():
     global redis_client
     redis_client = aioredis.from_url(
-        f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}",
+        settings.REDIS_URL,
         encoding="utf-8",
         decode_responses=True
     )
