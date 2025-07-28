@@ -42,8 +42,12 @@ COPY --from=builder /app/alembic.ini /app/alembic.ini
 # Set ownership of the app directory
 RUN chown -R app:app /app
 
+# Copy the startup script
+COPY --from=builder /app/start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
 # Switch to the non-root user
 USER app
 
-# Activate the virtual environment, run migrations, and then run the application
-CMD sleep 5 && /app/.venv/bin/alembic upgrade head && /app/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Run the startup script
+CMD ["/app/start.sh"]
