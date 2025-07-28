@@ -45,5 +45,5 @@ RUN chown -R app:app /app
 # Switch to the non-root user
 USER app
 
-# Activate the virtual environment and run the application
-CMD ["/app/.venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Activate the virtual environment, run migrations, and then run the application
+CMD sleep 5 && /app/.venv/bin/alembic upgrade head && /app/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
