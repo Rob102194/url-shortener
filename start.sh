@@ -3,6 +3,11 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
+# Print all environment variables for debugging
+echo "--- Printing environment variables ---"
+printenv
+echo "------------------------------------"
+
 # Wait for the database to be ready
 echo "Waiting for database..."
 counter=0
